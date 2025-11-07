@@ -5,7 +5,6 @@ DB_NAME = "world_of_warships.db"
 
 
 def create_database(db_name=DB_NAME):
-    """Создаёт SQLite-базу данных с таблицами для тестового задания World of Warships."""
     try:
         with sqlite3.connect(db_name) as conn:
             cursor = conn.cursor()

@@ -3,18 +3,12 @@ import random
 import os
 import sys
 
+from db.ship_service import create_ship
+from helper import random_int
+
 DB_NAME = "world_of_warships.db"
 
-
-def random_int():
-    """Возвращает случайное число в диапазоне 1–20."""
-    return random.randint(1, 20)
-
-
 def populate_database(db_name=DB_NAME):
-    """Очищает и заполняет SQLite базу случайными данными в соответствии с ТЗ."""
-
-    # Проверяем наличие базы
     if not os.path.exists(db_name):
         print(f"❌ Database file '{db_name}' not found. Run create_db.py first.")
         sys.exit(1)
@@ -23,7 +17,6 @@ def populate_database(db_name=DB_NAME):
         with sqlite3.connect(db_name) as conn:
             cursor = conn.cursor()
 
-            # Очистка таблиц
             cursor.executescript(
                 """
                 DELETE FROM ships;
@@ -34,8 +27,7 @@ def populate_database(db_name=DB_NAME):
             )
             print("🧹 Tables cleared.")
 
-            # ---- 1. weapons ----
-            for i in range(1, 21):  # 20 записей
+            for i in range(1, 21):
                 cursor.execute(
                     """
                     INSERT INTO weapons (weapon, reload_speed, rotation_speed, diameter, power_volley, count)
@@ -51,8 +43,7 @@ def populate_database(db_name=DB_NAME):
                     ),
                 )
 
-            # ---- 2. hulls ----
-            for i in range(1, 6):  # 5 записей
+            for i in range(1, 6):
                 cursor.execute(
                     """
                     INSERT INTO hulls (hull, armor, type, capacity)
@@ -61,8 +52,7 @@ def populate_database(db_name=DB_NAME):
                     (f"Hull-{i}", random_int(), random_int(), random_int()),
                 )
 
-            # ---- 3. engines ----
-            for i in range(1, 7):  # 6 записей
+            for i in range(1, 7):
                 cursor.execute(
                     """
                     INSERT INTO engines (engine, power, type)
@@ -71,25 +61,14 @@ def populate_database(db_name=DB_NAME):
                     (f"Engine-{i}", random_int(), random_int()),
                 )
 
-            # ---- 4. ships ----
             weapons = [f"Weapon-{i}" for i in range(1, 21)]
             hulls = [f"Hull-{i}" for i in range(1, 6)]
             engines = [f"Engine-{i}" for i in range(1, 7)]
 
-            for i in range(1, 201):  # 200 записей
-                cursor.execute(
-                    """
-                    INSERT INTO ships (ship, weapon, hull, engine)
-                    VALUES (?, ?, ?, ?)
-                """,
-                    (
-                        f"Ship-{i}",
-                        random.choice(weapons),
+            for i in range(1, 201):
+                create_ship(cursor, f"Ship-{i}", random.choice(weapons),
                         random.choice(hulls),
-                        random.choice(engines),
-                    ),
-                )
-
+                        random.choice(engines),)
             conn.commit()
             print(f"✅ Database '{db_name}' successfully populated with random data!")
 
