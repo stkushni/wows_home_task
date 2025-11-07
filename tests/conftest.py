@@ -1,32 +1,30 @@
 import sqlite3
 import os
+import allure
 import pytest
 import pathlib
 import shutil
 
 from config import orig_db
 
-
 @pytest.fixture(scope="session", autouse=True)
-def work_db_path(tmp_path_factory, request):
-    """Создаёт копию базы."""
-    tmp_dir = tmp_path_factory.mktemp("db_copy")
-    copy_db = tmp_dir / "world_of_warships_work.db"
-    shutil.copyfile(orig_db, copy_db)
+@allure.title("Prepare a copy of the original database with intentional data inconsistencies")
+def test_db_path(tmp_path_factory, request):
+    with allure.step("Create a copy of the original database."):
+        tmp_dir = tmp_path_factory.mktemp("db_copy")
+        copy_db = tmp_dir / "world_of_warships_work.db"
+        shutil.copyfile(orig_db, copy_db)
+        request.config.COPY_DB_PATH = copy_db
+        yield str(copy_db)
 
-    request.config.COPY_DB_PATH = copy_db
-    print(f"[Fixture] COPY_DB_PATH = {copy_db}")
-
-    yield str(copy_db)
-
-    if copy_db.exists():
-        os.remove(copy_db)
-        print(f"[Fixture] Копия базы удалена: {copy_db}")
+    with allure.step("Remove copied database"):
+        if copy_db.exists():
+            os.remove(copy_db)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def db_conns(pytestconfig, work_db_path):
-    """Создаёт сессионные соединения (зависит от work_db_path)."""
+@allure.title("Start DB connections")
+def db_conns(pytestconfig, test_db_path):
     orig_conn = sqlite3.connect(orig_db)
     orig_conn.row_factory = sqlite3.Row
     copy_conn = sqlite3.connect(pytestconfig.COPY_DB_PATH)
@@ -35,22 +33,19 @@ def db_conns(pytestconfig, work_db_path):
     pytestconfig.ORIG_CONN = orig_conn
     pytestconfig.COPY_CONN = copy_conn
 
-    print("[Fixture] Соединения открыты.")
-
-    yield  # тесты работают
-
-    orig_conn.close()
-    copy_conn.close()
-    print("[Fixture] Соединения закрыты.")
+    yield
+    with allure.step("Close connections"):
+        orig_conn.close()
+        copy_conn.close()
 
 
 @pytest.fixture
+@allure.title("Get original database connection")
 def orig_conn(pytestconfig):
-    """Отдаёт соединение с оригинальной базой."""
     return pytestconfig.ORIG_CONN
 
 
 @pytest.fixture
+@allure.title("Get copy database connection")
 def copy_conn(pytestconfig):
-    """Отдаёт соединение с копией базы."""
     return pytestconfig.COPY_CONN
