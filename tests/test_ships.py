@@ -23,16 +23,16 @@ class TestShips:
     # Универсальный метод сравнения зависимой таблицы
     # -------------------------------------------------------------------------
     @staticmethod
-    def compare_related_table(orig_conn, copy_conn, ship_id, rel_field, table_name):
+    def compare_related_table(orig_conn, copy_conn, ship_id, ship_part, table_name):
         """Сравнивает строки таблицы ships и зависимой таблицы (weapons/engines/hulls)."""
 
         # 1️⃣ Проверка: ссылка из ships совпадает
         orig_val = orig_conn.execute(
-            f"SELECT {rel_field} FROM ships WHERE ship = ?", (ship_id,)
-        ).fetchone()[rel_field]
+            f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_id,)
+        ).fetchone()[ship_part]
         copy_val = copy_conn.execute(
-            f"SELECT {rel_field} FROM ships WHERE ship = ?", (ship_id,)
-        ).fetchone()[rel_field]
+            f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_id,)
+        ).fetchone()[ship_part]
 
         assert (
             orig_val == copy_val
@@ -40,10 +40,13 @@ class TestShips:
 
         # 2️⃣ Проверка: совпадение строк в зависимой таблице
         orig_row = orig_conn.execute(
-            f"SELECT * FROM {table_name} WHERE {rel_field} = ?", (orig_val,)
+            f"SELECT * FROM {table_name} WHERE {ship_part} IN (SELECT {ship_part} FROM ships WHERE ship = ?)",
+            (ship_id,),
         ).fetchone()
+
         copy_row = copy_conn.execute(
-            f"SELECT * FROM {table_name} WHERE {rel_field} = ?", (copy_val,)
+            f"SELECT * FROM {table_name} WHERE {ship_part} IN (SELECT {ship_part} FROM ships WHERE ship = ?)",
+            (ship_id,),
         ).fetchone()
 
         orig_dict = dict(orig_row)
@@ -59,7 +62,7 @@ class TestShips:
     # Параметризованный тест для всех зависимостей
     # -------------------------------------------------------------------------
     @pytest.mark.parametrize(
-        "rel_field,table_name",
+        "ship_part,table_name",
         [
             ("weapon", "weapons"),
             ("engine", "engines"),
@@ -69,7 +72,7 @@ class TestShips:
     )
     @pytest.mark.parametrize("ship_id", get_ship_ids.__func__())
     def test_related_tables_equivalence(
-        self, ship_id, rel_field, table_name, orig_conn, copy_conn
+        self, ship_id, ship_part, table_name, orig_conn, copy_conn
     ):
         """Сравнивает строки из ships и зависимых таблиц (weapons, engines, hulls)."""
-        self.compare_related_table(orig_conn, copy_conn, ship_id, rel_field, table_name)
+        self.compare_related_table(orig_conn, copy_conn, ship_id, ship_part, table_name)
