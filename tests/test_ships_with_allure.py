@@ -1,14 +1,14 @@
 import pytest
 import sqlite3
 import allure
-from config import orig_db
+from config import ORIGINAL_DATABASE
 
 
 class TestShips:
 
     @staticmethod
     def get_ship_ids():
-        with sqlite3.connect(orig_db) as conn:
+        with sqlite3.connect(ORIGINAL_DATABASE) as conn:
             cursor = conn.execute("SELECT ship FROM ships")
             return [row[0] for row in cursor.fetchall()]
 
@@ -22,9 +22,9 @@ class TestShips:
                 f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_id,)
             ).fetchone()[0]
 
-            assert orig_val == copy_val, (
-                f"{ship_id} {copy_val} expected {orig_val}, was {copy_val}"
-            )
+            assert (
+                orig_val == copy_val
+            ), f"{ship_id} {copy_val} expected {orig_val}, was {copy_val}"
 
         with allure.step(f"[{ship_id}] Verify {ship_part} parameters in {table_name}"):
             orig_row = orig_conn.execute(
@@ -38,7 +38,6 @@ class TestShips:
                 f"(SELECT {ship_part} FROM ships WHERE ship = ?)",
                 (ship_id,),
             ).fetchone()
-
 
             orig_dict = dict(orig_row)
             copy_dict = dict(copy_row)
@@ -73,7 +72,6 @@ class TestShips:
     def test_related_tables_equivalence(
         self, ship_id, ship_part, table_name, orig_conn, copy_conn
     ):
-        """Compare rows from 'ships' with corresponding entries in related tables."""
         allure.dynamic.parent_suite("Database Integrity")
         allure.dynamic.suite(table_name.capitalize())
         allure.dynamic.sub_suite(f"{table_name.capitalize()} Data Check")
@@ -82,4 +80,6 @@ class TestShips:
         allure.dynamic.title(f"Compare {table_name} data for ship '{ship_id}'")
 
         with allure.step(f"Compare {ship_part} for ship {ship_id}"):
-            self.compare_related_table(orig_conn, copy_conn, ship_id, ship_part, table_name)
+            self.compare_related_table(
+                orig_conn, copy_conn, ship_id, ship_part, table_name
+            )
