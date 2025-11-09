@@ -6,15 +6,22 @@ import pytest
 import allure
 
 from config import ORIGINAL_DATABASE
-from helper import random_int
+from db.engine_service import get_engines_names, change_random_engine_parameter
+from db.hull_service import get_hulls_names, change_random_hull_parameter
+from db.ship_service import get_ships_names, change_ship_component
+from db.weapon_service import get_weapons_names, change_random_weapon_parameter
 
 
 @pytest.fixture(scope="session")
 @allure.title("Create modified copy of the original database")
 def test_db_path(tmp_path_factory, request):
     with allure.step("Validate existence of the original database"):
-        assert os.path.exists(ORIGINAL_DATABASE), f"Original DB not found: {ORIGINAL_DATABASE}"
-        assert os.path.getsize(ORIGINAL_DATABASE) > 0, f"Original DB is empty: {ORIGINAL_DATABASE}"
+        assert os.path.exists(
+            ORIGINAL_DATABASE
+        ), f"Original DB not found: {ORIGINAL_DATABASE}"
+        assert (
+            os.path.getsize(ORIGINAL_DATABASE) > 0
+        ), f"Original DB is empty: {ORIGINAL_DATABASE}"
 
     with allure.step("Create a copy of the original database"):
         tmp_dir = tmp_path_factory.mktemp("db_copy")
@@ -28,55 +35,29 @@ def test_db_path(tmp_path_factory, request):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        weapons = [f"Weapon-{i}" for i in range(1, 21)]
-        hulls = [f"Hull-{i}" for i in range(1, 6)]
-        engines = [f"Engine-{i}" for i in range(1, 7)]
+        weapons = get_weapons_names(cursor)
+        hulls = get_hulls_names(cursor)
+        engines = get_engines_names(cursor)
 
         components = {"weapon": weapons, "hull": hulls, "engine": engines}
-        ship_ids = [
-            r["ship"] for r in cursor.execute("SELECT ship FROM ships").fetchall()
-        ]
 
-        for ship_id in ship_ids:
+        for ship in get_ships_names(cursor):
             component = random.choice(list(components.keys()))
 
             if random.choice([True, False]):
-                with allure.step(f"[{ship_id}] Replace {component}"):
-                    new_val = random.choice(components[component])
-                    cursor.execute(
-                        f"UPDATE ships SET {component} = ? WHERE ship = ?",
-                        (new_val, ship_id),
+                with allure.step(f"[{ship}] Replace {component}"):
+                    change_ship_component(
+                        cursor, ship, component, random.choice(components[component])
                     )
 
-        components = {
-            "weapons": [
-                "reload_speed",
-                "rotation_speed",
-                "diameter",
-                "power_volley",
-                "count",
-            ],
-            "hulls": ["armor", "type", "capacity"],
-            "engines": ["power", "type"],
-        }
+        for engine in get_engines_names(cursor):
+            change_random_engine_parameter(cursor, engine)
 
-        for table, columns in components.items():
-            cursor.execute(f"SELECT * FROM {table}")
-            rows = cursor.fetchall()
+        for hull in get_hulls_names(cursor):
+            change_random_hull_parameter(cursor, hull)
 
-            col_names = [desc[0] for desc in cursor.description]
-            id_col = col_names[0]
-
-            for row in rows:
-                row_id = row[0]
-                mutable_cols = columns
-                target_col = random.choice(mutable_cols)
-                new_value = random_int()
-
-                cursor.execute(
-                    f"UPDATE {table} SET {target_col} = ? WHERE {id_col} = ?",
-                    (new_value, row_id),
-                )
+        for weapon in get_weapons_names(cursor):
+            change_random_weapon_parameter(cursor, weapon)
 
         conn.commit()
         conn.close()
