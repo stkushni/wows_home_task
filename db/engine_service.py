@@ -13,9 +13,15 @@ def create_engine(cursor, engine, power, type):
 
 
 def get_engines_names(cursor):
-    engines_names = [row[0] for row in cursor.execute("SELECT engine FROM engines")]
+    return [row[0] for row in cursor.execute("SELECT engine FROM engines")]
 
-    return engines_names
+
+def get_engine_params(cursor, engine_name, ship_name):
+    return cursor.execute(
+        f"SELECT * FROM engines WHERE {engine_name} IN "
+        f"(SELECT {engine_name} FROM ships WHERE ship = ?)",
+        (ship_name,),
+    ).fetchone()
 
 
 def change_random_engine_parameter(cursor, engine):

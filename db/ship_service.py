@@ -19,9 +19,19 @@ def create_ship(cursor, ship, weapon, hull, engine):
 
 
 def get_ships_names(cursor):
-    ship_names = [row[0] for row in cursor.execute("SELECT ship FROM ships")]
+    return [row[0] for row in cursor.execute("SELECT ship FROM ships")]
 
-    return ship_names
+
+def get_ships_names_with_connection():
+    with sqlite3.connect(ORIGINAL_DATABASE) as conn:
+        cursor = conn.cursor()
+        return get_ships_names(cursor)
+
+
+def get_ship_component_name(cursor, ship_part, ship_name):
+    return cursor.execute(
+        f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_name,)
+    ).fetchone()[0]
 
 
 def change_ship_component(cursor, ship, component, component_name):
@@ -29,11 +39,6 @@ def change_ship_component(cursor, ship, component, component_name):
         f"UPDATE ships SET {component} = ? WHERE ship = ?",
         (component_name, ship),
     )
-
-def get_ship_ids():
-    with sqlite3.connect(ORIGINAL_DATABASE) as conn:
-        cursor = conn.execute("SELECT ship FROM ships")
-        return [row[0] for row in cursor.fetchall()]
 
 
 def delete_all_ships(cursor):

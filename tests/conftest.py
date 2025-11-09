@@ -14,7 +14,7 @@ from db.weapon_service import get_weapons_names, change_random_weapon_parameter
 
 @pytest.fixture(scope="session")
 @allure.title("Create modified copy of the original database")
-def test_db_path(tmp_path_factory, request):
+def copy_db_preparation(tmp_path_factory, request):
     with allure.step("Validate existence of the original database"):
         assert os.path.exists(
             ORIGINAL_DATABASE
@@ -69,30 +69,56 @@ def test_db_path(tmp_path_factory, request):
             os.remove(copy_db)
 
 
-@pytest.fixture(scope="session", autouse=True)
-@allure.title("Start DB connections")
-def db_conns(pytestconfig, test_db_path):
-    orig_conn = sqlite3.connect(ORIGINAL_DATABASE)
-    orig_conn.row_factory = sqlite3.Row
-    copy_conn = sqlite3.connect(pytestconfig.COPY_DB_PATH)
-    copy_conn.row_factory = sqlite3.Row
-
-    pytestconfig.ORIG_CONN = orig_conn
-    pytestconfig.COPY_CONN = copy_conn
-
-    yield
-    with allure.step("Close connections"):
-        orig_conn.close()
-        copy_conn.close()
+@pytest.fixture(scope="session")
+@allure.title("Original DB cursor")
+def orig_cursor(copy_db_preparation):
+    conn = sqlite3.connect(ORIGINAL_DATABASE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    yield cursor
+    with allure.step("Close original DB connection"):
+        conn.close()
 
 
-@pytest.fixture
-@allure.title("Get original database connection")
-def orig_conn(pytestconfig):
-    return pytestconfig.ORIG_CONN
+@pytest.fixture(scope="session")
+@allure.title("Modified (copy) DB cursor")
+def copy_cursor(pytestconfig, copy_db_preparation):
+    db_path = pytestconfig.COPY_DB_PATH
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    yield cursor
+    with allure.step("Close copy DB connection"):
+        conn.close()
 
 
-@pytest.fixture
-@allure.title("Get copy database connection")
-def copy_conn(pytestconfig):
-    return pytestconfig.COPY_CONN
+# @pytest.fixture(scope="session", autouse=True)
+# @allure.title("Start DB connections")
+# def db_conns(pytestconfig, test_db_path):
+#     orig_conn = sqlite3.connect(ORIGINAL_DATABASE)
+#     orig_conn.row_factory = sqlite3.Row
+#     orig_cursor = orig_conn.cursor()
+#     copy_conn = sqlite3.connect(pytestconfig.COPY_DB_PATH)
+#     copy_conn.row_factory = sqlite3.Row
+#     copy_cursor = copy_conn.cursor()
+#
+#     pytestconfig.ORIG_CURSOR = orig_cursor
+#     pytestconfig.COPY_CURSOR = copy_cursor
+#
+#     yield
+#
+#     with allure.step("Close connections"):
+#         orig_conn.close()
+#         copy_conn.close()
+#
+#
+# @pytest.fixture
+# @allure.title("Get original database connection")
+# def orig_conn(pytestconfig):
+#     return pytestconfig.ORIG_CURSOR
+#
+#
+# @pytest.fixture
+# @allure.title("Get copy database connection")
+# def copy_conn(pytestconfig):
+#     return pytestconfig.COPY_CURSOR
