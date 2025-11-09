@@ -2,11 +2,14 @@ import sqlite3
 import random
 import os
 import sys
-
-from db.ship_service import create_ship
+from db.engine_service import delete_all_engines, create_engine, get_engines_names
+from db.hull_service import delete_all_hulls, create_hull, get_hulls_names
+from db.ship_service import create_ship, delete_all_ships
+from db.weapon_service import delete_all_weapons, create_weapon, get_weapons_names
 from helper import random_int
 
 DB_NAME = "world_of_warships.db"
+
 
 def populate_database(db_name=DB_NAME):
     if not os.path.exists(db_name):
@@ -16,59 +19,44 @@ def populate_database(db_name=DB_NAME):
     try:
         with sqlite3.connect(db_name) as conn:
             cursor = conn.cursor()
-
-            cursor.executescript(
-                """
-                DELETE FROM ships;
-                DELETE FROM weapons;
-                DELETE FROM hulls;
-                DELETE FROM engines;
-            """
-            )
+            conn.row_factory = sqlite3.Row
+            delete_all_ships(cursor)
+            delete_all_weapons(cursor)
+            delete_all_hulls(cursor)
+            delete_all_engines(cursor)
             print("🧹 Tables cleared.")
 
             for i in range(1, 21):
-                cursor.execute(
-                    """
-                    INSERT INTO weapons (weapon, reload_speed, rotation_speed, diameter, power_volley, count)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        f"Weapon-{i}",
-                        random_int(),
-                        random_int(),
-                        random_int(),
-                        random_int(),
-                        random_int(),
-                    ),
+                create_weapon(
+                    cursor,
+                    f"Weapon-{i}",
+                    random_int(),
+                    random_int(),
+                    random_int(),
+                    random_int(),
+                    random_int(),
                 )
 
             for i in range(1, 6):
-                cursor.execute(
-                    """
-                    INSERT INTO hulls (hull, armor, type, capacity)
-                    VALUES (?, ?, ?, ?)
-                """,
-                    (f"Hull-{i}", random_int(), random_int(), random_int()),
+                create_hull(
+                    cursor, f"Hull-{i}", random_int(), random_int(), random_int()
                 )
 
             for i in range(1, 7):
-                cursor.execute(
-                    """
-                    INSERT INTO engines (engine, power, type)
-                    VALUES (?, ?, ?)
-                """,
-                    (f"Engine-{i}", random_int(), random_int()),
-                )
+                create_engine(cursor, f"Engine-{i}", random_int(), random_int())
 
-            weapons = [f"Weapon-{i}" for i in range(1, 21)]
-            hulls = [f"Hull-{i}" for i in range(1, 6)]
-            engines = [f"Engine-{i}" for i in range(1, 7)]
+            weapons = get_weapons_names(cursor)
+            hulls = get_hulls_names(cursor)
+            engines = get_engines_names(cursor)
 
             for i in range(1, 201):
-                create_ship(cursor, f"Ship-{i}", random.choice(weapons),
-                        random.choice(hulls),
-                        random.choice(engines),)
+                create_ship(
+                    cursor,
+                    f"Ship-{i}",
+                    random.choice(weapons),
+                    random.choice(hulls),
+                    random.choice(engines),
+                )
             conn.commit()
             print(f"✅ Database '{db_name}' successfully populated with random data!")
 

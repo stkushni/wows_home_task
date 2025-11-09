@@ -2,15 +2,16 @@ import pytest
 import sqlite3
 import allure
 from config import ORIGINAL_DATABASE
+from db.ship_service import get_ship_ids
 
 
 class TestShips:
 
-    @staticmethod
-    def get_ship_ids():
-        with sqlite3.connect(ORIGINAL_DATABASE) as conn:
-            cursor = conn.execute("SELECT ship FROM ships")
-            return [row[0] for row in cursor.fetchall()]
+    # @staticmethod
+    # def get_ship_ids():
+    #     with sqlite3.connect(ORIGINAL_DATABASE) as conn:
+    #         cursor = conn.execute("SELECT ship FROM ships")
+    #         return [row[0] for row in cursor.fetchall()]
 
     @staticmethod
     def compare_related_table(orig_conn, copy_conn, ship_id, ship_part, table_name):
@@ -68,7 +69,7 @@ class TestShips:
         ],
         ids=["weapons", "engines", "hulls"],
     )
-    @pytest.mark.parametrize("ship_id", get_ship_ids.__func__())
+    @pytest.mark.parametrize("ship_id", get_ship_ids())
     def test_related_tables_equivalence(
         self, ship_id, ship_part, table_name, orig_conn, copy_conn
     ):
