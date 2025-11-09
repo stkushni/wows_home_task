@@ -1,55 +1,53 @@
 import pytest
-import sqlite3
 import allure
-from config import ORIGINAL_DATABASE
-from db.ship_service import get_ship_ids
+
+from db.engine_service import get_engine_params
+from db.hull_service import get_hull_params
+from db.ship_service import get_ship_component_name, get_ships_names_with_connection
+from db.weapon_service import get_weapon_params
 
 
 class TestShips:
 
-    # @staticmethod
-    # def get_ship_ids():
-    #     with sqlite3.connect(ORIGINAL_DATABASE) as conn:
-    #         cursor = conn.execute("SELECT ship FROM ships")
-    #         return [row[0] for row in cursor.fetchall()]
-
     @staticmethod
-    def compare_related_table(orig_conn, copy_conn, ship_id, ship_part, table_name):
-        with allure.step(f"[{ship_id}] Verify {ship_part} reference in ships"):
-            orig_val = orig_conn.execute(
-                f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_id,)
-            ).fetchone()[0]
-            copy_val = copy_conn.execute(
-                f"SELECT {ship_part} FROM ships WHERE ship = ?", (ship_id,)
-            ).fetchone()[0]
+    def compare_related_table(
+        orig_cursor, copy_cursor, ship_name, ship_component, table_name
+    ):
+        with allure.step(f"[{ship_name}] Verify {ship_component} reference in ships"):
+            original_component = get_ship_component_name(
+                orig_cursor, ship_component, ship_name
+            )
+            copy_componet = get_ship_component_name(
+                copy_cursor, ship_component, ship_name
+            )
 
             assert (
-                orig_val == copy_val
-            ), f"{ship_id} {copy_val} expected {orig_val}, was {copy_val}"
+                original_component == copy_componet
+            ), f"{ship_name} {copy_componet} expected {original_component}, was {copy_componet}"
 
-        with allure.step(f"[{ship_id}] Verify {ship_part} parameters in {table_name}"):
-            orig_row = orig_conn.execute(
-                f"SELECT * FROM {table_name} WHERE {ship_part} IN "
-                f"(SELECT {ship_part} FROM ships WHERE ship = ?)",
-                (ship_id,),
-            ).fetchone()
+        table_dispatch = {
+            "weapons": get_weapon_params,
+            "hulls": get_hull_params,
+            "engines": get_engine_params,
+        }
 
-            copy_row = copy_conn.execute(
-                f"SELECT * FROM {table_name} WHERE {ship_part} IN "
-                f"(SELECT {ship_part} FROM ships WHERE ship = ?)",
-                (ship_id,),
-            ).fetchone()
+        parser = table_dispatch.get(table_name)
+        if not parser:
+            raise ValueError(f"Unsupported table: {table_name}")
 
-            orig_dict = dict(orig_row)
-            copy_dict = dict(copy_row)
+        with allure.step(
+            f"[{ship_name}] Verify {ship_component} parameters in {table_name}"
+        ):
+            orig_dict = parser(orig_cursor, ship_component, ship_name)
+            copy_dict = parser(copy_cursor, ship_component, ship_name)
 
             for col in orig_dict.keys():
                 if orig_dict[col] != copy_dict[col]:
                     allure.attach(
                         name=f"Diff: {table_name}.{col}",
                         body=(
-                            f"Ship: {ship_id}\n"
-                            f"Part: {ship_part}\n"
+                            f"Ship: {ship_name}\n"
+                            f"Part: {ship_component}\n"
                             f"Column: {col}\n"
                             f"Expected: {orig_dict[col]}\n"
                             f"Actual:   {copy_dict[col]}"
@@ -57,11 +55,11 @@ class TestShips:
                         attachment_type=allure.attachment_type.TEXT,
                     )
                     pytest.fail(
-                        f"{ship_id}, {ship_part}.{col}: expected {orig_dict[col]} was {copy_dict[col]}"
+                        f"{ship_name}, {original_component} {col}: expected {orig_dict[col]}, was {copy_dict[col]}"
                     )
 
     @pytest.mark.parametrize(
-        "ship_part,table_name",
+        "ship_component,table_name",
         [
             ("weapon", "weapons"),
             ("engine", "engines"),
@@ -69,18 +67,18 @@ class TestShips:
         ],
         ids=["weapons", "engines", "hulls"],
     )
-    @pytest.mark.parametrize("ship_id", get_ship_ids())
+    @pytest.mark.parametrize("ship_name", get_ships_names_with_connection())
     def test_related_tables_equivalence(
-        self, ship_id, ship_part, table_name, orig_conn, copy_conn
+        self, ship_name, ship_component, table_name, orig_cursor, copy_cursor
     ):
         allure.dynamic.parent_suite("Database Integrity")
         allure.dynamic.suite(table_name.capitalize())
         allure.dynamic.sub_suite(f"{table_name.capitalize()} Data Check")
         allure.dynamic.feature(table_name.capitalize())
-        allure.dynamic.story(f"Verify {ship_part} linkage for ship {ship_id}")
-        allure.dynamic.title(f"Compare {table_name} data for ship '{ship_id}'")
+        allure.dynamic.story(f"Verify {ship_component} linkage for ship {ship_name}")
+        allure.dynamic.title(f"Compare {table_name} data for ship '{ship_name}'")
 
-        with allure.step(f"Compare {ship_part} for ship {ship_id}"):
+        with allure.step(f"Compare {ship_component} for ship {ship_name}"):
             self.compare_related_table(
-                orig_conn, copy_conn, ship_id, ship_part, table_name
+                orig_cursor, copy_cursor, ship_name, ship_component, table_name
             )

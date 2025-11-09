@@ -14,9 +14,15 @@ def create_hull(cursor, hull, armor, type, capacity):
 
 
 def get_hulls_names(cursor):
-    hulls_names = [row[0] for row in cursor.execute("SELECT hull FROM hulls")]
+    return [row[0] for row in cursor.execute("SELECT hull FROM hulls")]
 
-    return hulls_names
+
+def get_hull_params(cursor, hull_name, ship_name):
+    return cursor.execute(
+        f"SELECT * FROM hulls WHERE {hull_name} IN "
+        f"(SELECT {hull_name} FROM ships WHERE ship = ?)",
+        (ship_name,),
+    ).fetchone()
 
 
 def change_random_hull_parameter(cursor, hull):

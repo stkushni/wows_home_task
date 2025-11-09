@@ -23,9 +23,15 @@ def create_weapon(
 
 
 def get_weapons_names(cursor):
-    weapon_names = [row[0] for row in cursor.execute("SELECT weapon FROM weapons")]
+    return [row[0] for row in cursor.execute("SELECT weapon FROM weapons")]
 
-    return weapon_names
+
+def get_weapon_params(cursor, weapon_name, ship_name):
+    return cursor.execute(
+        f"SELECT * FROM weapons WHERE {weapon_name} IN "
+        f"(SELECT {weapon_name} FROM ships WHERE ship = ?)",
+        (ship_name,),
+    ).fetchone()
 
 
 def change_random_weapon_parameter(cursor, weapon):
