@@ -69,63 +69,61 @@ prepares the database, installs all dependencies (including the Allure CLI +
 JRE) and leaves you inside the container after the initial test run so you can
 inspect reports or rerun tests.
 
-### 1. Build the Image
+### Install Docker (if needed)
 
-```bash
-docker build -t wows-tests .
-```
+Follow the official instructions for your OS if Docker Engine/Desktop is not yet
+available locally:
 
-### 2. Run the Container Interactively
+| Platform | Documentation |
+| --- | --- |
+| Linux | [docs.docker.com/engine/install](https://docs.docker.com/engine/install/) |
+| macOS | [docs.docker.com/desktop/install/mac-install](https://docs.docker.com/desktop/install/mac-install/) |
+| Windows | [docs.docker.com/desktop/install/windows-install](https://docs.docker.com/desktop/install/windows-install/) |
 
-```bash
-docker run -it --name wows-tests-run -p 5050:5050 wows-tests
-```
+> ℹ️ After installing Docker Desktop (macOS/Windows) remember to start the
+> application once so that the Docker daemon is running before you continue.
 
-What happens automatically on first start:
+### Step-by-step workflow
 
-1. The SQLite database is recreated and populated inside the container
-   (`/app/db/world_of_warships.db`).
-2. `pytest -v --alluredir=/app/allure-results` is executed.
-3. When tests finish, the exit code is written to `/tmp/pytest_exit_code`, and an
-   interactive shell opens instead of terminating the container. This lets you:
-   - rerun tests (`pytest`, `pytest -k ...`, etc.);
-   - view the stored exit code: `cat /tmp/pytest_exit_code`;
-   - generate and serve the Allure report.
+1. **Build the image** (run from the project root):
+   ```bash
+   docker build -t wows-tests .
+   ```
+2. **Start an interactive container** that exposes the Allure server port and
+   keeps running after the first test execution:
+   ```bash
+   docker run -it --name wows-tests-run -p 5050:5050 wows-tests
+   ```
+   On first boot the entrypoint will automatically:
+   - recreate and populate `/app/db/world_of_warships.db`;
+   - execute `pytest -v --alluredir=/app/allure-results`;
+   - store the pytest exit status in `/tmp/pytest_exit_code` and drop you into a
+     shell instead of terminating the container so you can inspect results.
 
-> 💡 If you need the container to stop immediately after the command, launch it
-> with `-e KEEP_CONTAINER_ALIVE=0`.
-
-### 3. View the Allure Report (Optional)
-
-Inside the interactive shell execute:
-
-```bash
-allure serve /app/allure-results --host 0.0.0.0 --port 5050
-```
-
-The command exposes the report on http://localhost:5050 thanks to the `-p 5050:5050`
-port mapping from step 2.
-
-### 4. Rerun Tests Later
-
-Reattach to the container (if it is still running) with:
-
-```bash
-docker exec -it wows-tests-run bash
-```
-
-Then run `pytest` commands as needed. When you are done, exit the shell with
-`exit` and stop the container:
-
-```bash
-docker stop wows-tests-run
-```
-
-To start from scratch, remove the stopped container:
-
-```bash
-docker rm wows-tests-run
-```
+   > 💡 Want the container to exit immediately after the command finishes? Add
+   > `-e KEEP_CONTAINER_ALIVE=0` to the `docker run` command.
+3. **Serve the Allure report** (optional) directly from the running container:
+   ```bash
+   allure serve /app/allure-results --host 0.0.0.0 --port 5050
+   ```
+   Visit http://localhost:5050 in your browser to view the report (the `-p
+   5050:5050` flag from the previous step forwards the port).
+4. **Rerun tests or inspect artifacts** at any time while the container is
+   running. Execute additional `pytest` commands, open the saved exit code via
+   `cat /tmp/pytest_exit_code`, or explore generated files under `/app`.
+5. **Reconnect later** if you detached from the session while the container is
+   still running:
+   ```bash
+   docker exec -it wows-tests-run bash
+   ```
+   When finished, exit the shell (`exit`) and stop the container:
+   ```bash
+   docker stop wows-tests-run
+   ```
+   To clean everything up and start over, remove the stopped container:
+   ```bash
+   docker rm wows-tests-run
+   ```
 
 ---
 
