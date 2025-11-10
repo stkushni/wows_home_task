@@ -62,6 +62,72 @@ pytest --alluredir=allure-results
 
 ---
 
+## Docker: One-Command Test Environment
+
+The repository ships with a Docker image that prepares the database, installs all
+dependencies (including the Allure CLI + JRE) and leaves you inside the
+container after the initial test run so you can inspect reports or rerun tests.
+
+### 1. Build the Image
+
+```bash
+docker build -t wows-tests .
+```
+
+### 2. Run the Container Interactively
+
+```bash
+docker run -it --name wows-tests-run -p 5050:5050 wows-tests
+```
+
+What happens automatically on first start:
+
+1. The SQLite database is recreated and populated inside the container
+   (`/app/db/world_of_warships.db`).
+2. `pytest -v --alluredir=/app/allure-results` is executed.
+3. When tests finish, the exit code is written to `/tmp/pytest_exit_code`, and an
+   interactive shell opens instead of terminating the container. This lets you:
+   - rerun tests (`pytest`, `pytest -k ...`, etc.);
+   - view the stored exit code: `cat /tmp/pytest_exit_code`;
+   - generate and serve the Allure report.
+
+> 💡 If you need the container to stop immediately after the command, launch it
+> with `-e KEEP_CONTAINER_ALIVE=0`.
+
+### 3. View the Allure Report (Optional)
+
+Inside the interactive shell execute:
+
+```bash
+allure serve /app/allure-results --host 0.0.0.0 --port 5050
+```
+
+The command exposes the report on http://localhost:5050 thanks to the `-p 5050:5050`
+port mapping from step 2.
+
+### 4. Rerun Tests Later
+
+Reattach to the container (if it is still running) with:
+
+```bash
+docker exec -it wows-tests-run bash
+```
+
+Then run `pytest` commands as needed. When you are done, exit the shell with
+`exit` and stop the container:
+
+```bash
+docker stop wows-tests-run
+```
+
+To start from scratch, remove the stopped container:
+
+```bash
+docker rm wows-tests-run
+```
+
+---
+
 ## Viewing the Allure Report
 
 ### 1. Install Allure and JRE
