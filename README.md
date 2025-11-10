@@ -4,10 +4,9 @@
 
 **wows_home_task** is a test automation project designed to verify two main database error scenarios:  
 1. Invalid component entries  
-2. Incorrect component parameter values  
-
-To improve test result readability and reporting, **Allure** integration has been added.
-For better readability, all database operations have been moved into dedicated service classes.
+2. Incorrect component parameter values
+3. To improve test result readability and reporting, **Allure** integration has been added.
+4. For better readability, all database operations have been moved into dedicated service classes.
 ---
 
 ## Installation and Setup
