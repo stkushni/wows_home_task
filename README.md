@@ -64,9 +64,10 @@ pytest --alluredir=allure-results
 
 ## Docker: One-Command Test Environment
 
-The repository ships with a Docker image that prepares the database, installs all
-dependencies (including the Allure CLI + JRE) and leaves you inside the
-container after the initial test run so you can inspect reports or rerun tests.
+The repository ships with a Docker image (based on `python:3.8-slim`) that
+prepares the database, installs all dependencies (including the Allure CLI +
+JRE) and leaves you inside the container after the initial test run so you can
+inspect reports or rerun tests.
 
 ### 1. Build the Image
 
